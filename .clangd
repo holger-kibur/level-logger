@@ -3,6 +3,6 @@ CompileFlags:
       -ferror-limit=0,
       -mlong-calls,
       -I~/esp/esp-idf/components/**,
-      -I~/home/hkibur/.espressif/tools/riscv32-esp-elf/esp-2022r1-11.2.0/riscv32-esp-elf/riscv32-esp-elf/include
+      -I~/.espressif/tools/riscv32-esp-elf/esp-2022r1-11.2.0/riscv32-esp-elf/riscv32-esp-elf/include
     ]
     Remove: [-mlongcalls, -fstrict-volatile-bitfields, -fno-tree-switch-conversion]
