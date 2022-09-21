@@ -1,45 +1,66 @@
 #include "setup_ap.h"
+#include "const.h"
 #include "esp_err.h"
 #include "esp_event.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_netif.h"
-#include <errno.h>
 #include "esp_netif_types.h"
 #include "esp_wifi.h"
-#include "const.h"
-#include "util.h"
 #include "esp_wifi_types.h"
+#include "util.h"
+#include <errno.h>
 #include <pthread.h>
 #include <string.h>
 #include <sys/errno.h>
 
 static const char *TAG = "SETUP ACCESS POINT";
 static const wifi_config_t SETUP_AP_CONFIG = {
-    .ap = {
-        .ssid = SETUP_AP_SSID,
-        .ssid_len = 0, // Treat SSID as null terminated string.
-        .ssid_hidden = 0, // Broadcast the SSID.
-        .password = "", // No password because it's open.
-        .channel = 1, // First channel, usable in all countries.
-        .authmode = WIFI_AUTH_OPEN, // No security.
-        .max_connection = 1, // Only one device should be able to connect at a
-                             // time.
-        .beacon_interval = 100, // Standard 802.11 beacon interval.
-        .pairwise_cipher = WIFI_CIPHER_TYPE_NONE, // Open connection, we don't
-                                                  // need a cipher.
-        .ftm_responder = false, // ??
-        .pmf_cfg = { // We don't need Protected Management Frame capability.
-            .capable = false,
-            .required = false,
+    .ap =
+        {
+            .ssid = SETUP_AP_SSID,
+            .ssid_len = 0,    // Treat SSID as null terminated string.
+            .ssid_hidden = 0, // Broadcast the SSID.
+            .password = "",   // No password because it's open.
+            .channel = 1,     // First channel, usable in all countries.
+            .authmode = WIFI_AUTH_OPEN, // No security.
+            .max_connection = 1, // Only one device should be able to connect at
+                                 // a time.
+            .beacon_interval = 100, // Standard 802.11 beacon interval.
+            .pairwise_cipher = WIFI_CIPHER_TYPE_NONE, // Open connection, we
+                                                      // don't need a cipher.
+            .ftm_responder = false, // ??
+            .pmf_cfg =
+                {
+                    // We don't need Protected Management Frame capability.
+                    .capable = false,
+                    .required = false,
+                },
         },
-    },
 };
 static const httpd_config_t SETUP_HTTP_CONFIG = HTTPD_DEFAULT_CONFIG();
-static const char *SETUP_FORM_HTML = "<!DOCTYPE html><html><form action=/ method=POST>SSID:<br><input name=ssid><br>Password:<br><input name=pass><br>Target:<br><input name=target><br>Device Name:<br><input name=dev_name><br><a href=status><input type=submit value=Connect></a></form></body></html>";
-static const char *SETUP_LOADING_HTML = "<!DOCTYPE html><html><head><meta http-equiv=\"refresh\" content=\"2\"/><style>.loader{display: inline-block; border: 5px solid #f3f3f3; border-radius: 50%; border-top: 5px solid #000000; width: 20px; height: 20px; -webkit-animation: spin 1s linear infinite; /* Safari */ animation: spin 1s linear infinite;}/* Safari */@-webkit-keyframes spin{0%{-webkit-transform: rotate(0deg);}100%{-webkit-transform: rotate(360deg);}}@keyframes spin{0%{transform: rotate(0deg);}100%{transform: rotate(360deg);}}</style></head><body><div class=\"loader\"></div><h1 style=\"display: inline; margin-left: 10px;\">Connecting and verifying</h1></body></html>";
-static const char *SETUP_SUCCESS_HTML = "<!DOCTYPE html><html><body><h1 style=\"color: #00cf0e;\">Success!</h1></body></html>";
-static const char *SETUP_ERROR_HTML_FORMAT = "<!DOCTYPE html><html><body><h1 style=\"color: red;\">Error!</h1><h2>%s</h2></body></html>";
+static const char *SETUP_FORM_HTML =
+    "<!DOCTYPE html><html><form action=/ method=POST>SSID:<br><input "
+    "name=ssid><br>Password:<br><input name=pass><br>Target:<br><input "
+    "name=target><br>Device Name:<br><input name=dev_name><br><a "
+    "href=status><input type=submit value=Connect></a></form></body></html>";
+static const char *SETUP_LOADING_HTML =
+    "<!DOCTYPE html><html><head><meta http-equiv=\"refresh\" "
+    "content=\"2\"/><style>.loader{display: inline-block; border: 5px solid "
+    "#f3f3f3; border-radius: 50%; border-top: 5px solid #000000; width: 20px; "
+    "height: 20px; -webkit-animation: spin 1s linear infinite; /* Safari */ "
+    "animation: spin 1s linear infinite;}/* Safari */@-webkit-keyframes "
+    "spin{0%{-webkit-transform: rotate(0deg);}100%{-webkit-transform: "
+    "rotate(360deg);}}@keyframes spin{0%{transform: "
+    "rotate(0deg);}100%{transform: rotate(360deg);}}</style></head><body><div "
+    "class=\"loader\"></div><h1 style=\"display: inline; margin-left: "
+    "10px;\">Connecting and verifying</h1></body></html>";
+static const char *SETUP_SUCCESS_HTML =
+    "<!DOCTYPE html><html><body><h1 style=\"color: "
+    "#00cf0e;\">Success!</h1></body></html>";
+static const char *SETUP_ERROR_HTML_FORMAT =
+    "<!DOCTYPE html><html><body><h1 style=\"color: "
+    "red;\">Error!</h1><h2>%s</h2></body></html>";
 
 static setup_ap_server_t *glob_server = NULL;
 
@@ -92,18 +113,19 @@ static setup_error_t netinfo_validate(network_info_t *netinfo) {
 
 static const char *netinfo_error_explain(setup_error_t error) {
     switch (error) {
-        case se_None:
-            return "No error.";
-        case se_UnmatchedPair:
-            return "Form POST request content contains an incomplete field=value pair.";
-        case se_UnknownField:
-            return "Unknown field in form POST request content.";
-        case se_SsidTooLong:
-            return "Network SSID too long.";
-        case se_PskTooLong:
-            return "Network password (PSK) too long.";
-        default:
-            return "Unexplainable error.";
+    case se_None:
+        return "No error.";
+    case se_UnmatchedPair:
+        return "Form POST request content contains an incomplete field=value "
+               "pair.";
+    case se_UnknownField:
+        return "Unknown field in form POST request content.";
+    case se_SsidTooLong:
+        return "Network SSID too long.";
+    case se_PskTooLong:
+        return "Network password (PSK) too long.";
+    default:
+        return "Unexplainable error.";
     }
 }
 
@@ -118,26 +140,36 @@ static esp_err_t main_get_handler(httpd_req_t *request) {
 
     // Decide which page to present to the user
     switch (get_setup_server_state(glob_server)) {
-        case ss_WaitingForNetInfo:
-            ESP_LOGI(TAG, "Waiting for network information. Responding with network information form page.");
-            ESP_EC(httpd_resp_send(request, SETUP_FORM_HTML, HTTPD_RESP_USE_STRLEN));
-            break;
-        case ss_WaitingForConnection:
-            ESP_LOGI(TAG, "Currently trying to connect. Responding with redirect to status.");
-            ESP_EC(httpd_resp_send(request, SETUP_LOADING_HTML, HTTPD_RESP_USE_STRLEN));
-            break;
-        case ss_Failure:;
-            char error_reason_buffer[256];
+    case ss_WaitingForNetInfo:
+        ESP_LOGI(TAG, "Waiting for network information. Responding with "
+                      "network information form page.");
+        ESP_EC(
+            httpd_resp_send(request, SETUP_FORM_HTML, HTTPD_RESP_USE_STRLEN));
+        break;
+    case ss_WaitingForConnection:
+        ESP_LOGI(
+            TAG,
+            "Currently trying to connect. Responding with redirect to status.");
+        ESP_EC(httpd_resp_send(request, SETUP_LOADING_HTML,
+                               HTTPD_RESP_USE_STRLEN));
+        break;
+    case ss_Failure:;
+        char error_reason_buffer[256];
 
-            ESP_LOGI(TAG, "Failed to connect and/or confirm target. Resonding with fail message!");
-            setup_server_error_format(glob_server, 256, error_reason_buffer, SETUP_ERROR_HTML_FORMAT);
-            ESP_EC(httpd_resp_send(request, error_reason_buffer, HTTPD_RESP_USE_STRLEN));
-            reset_setup_server_state(glob_server);
-            break;
-        case ss_Success:
-            ESP_LOGI(TAG, "Succeeded in connecting with network and confirming target. Responding with success mesage!");
-            ESP_EC(httpd_resp_send(request, SETUP_SUCCESS_HTML, HTTPD_RESP_USE_STRLEN));
-            break;
+        ESP_LOGI(TAG, "Failed to connect and/or confirm target. Resonding with "
+                      "fail message!");
+        setup_server_error_format(glob_server, 256, error_reason_buffer,
+                                  SETUP_ERROR_HTML_FORMAT);
+        ESP_EC(httpd_resp_send(request, error_reason_buffer,
+                               HTTPD_RESP_USE_STRLEN));
+        reset_setup_server_state(glob_server);
+        break;
+    case ss_Success:
+        ESP_LOGI(TAG, "Succeeded in connecting with network and confirming "
+                      "target. Responding with success mesage!");
+        ESP_EC(httpd_resp_send(request, SETUP_SUCCESS_HTML,
+                               HTTPD_RESP_USE_STRLEN));
+        break;
     }
 
     return ESP_OK;
@@ -146,21 +178,23 @@ static esp_err_t main_get_handler(httpd_req_t *request) {
 static esp_err_t main_post_handler(httpd_req_t *request) {
     NPC(glob_server);
     ESP_LOGI(TAG, "Received POST request from form page!");
-    
+
     // Check if the POST content length is more than the buffer size.
     int copy_len = request->content_len;
     int max_len = sizeof(glob_server->info.buffer);
     if (copy_len > max_len) {
-        ESP_LOGW(TAG, "POST content is bigger than can fit in the buffer. Check form HTML.");
+        ESP_LOGW(TAG, "POST content is bigger than can fit in the buffer. "
+                      "Check form HTML.");
         // Truncate content to fit in buffer.
         copy_len = max_len;
     }
 
-    int recv_status = httpd_req_recv(request, glob_server->info.buffer, copy_len);
+    int recv_status =
+        httpd_req_recv(request, glob_server->info.buffer, copy_len);
     if (recv_status <= 0) {
         return ESP_FAIL;
     }
-    
+
     ESP_LOGI(TAG, "Post Content:\n%s", glob_server->info.buffer);
     fill_netinfo(glob_server);
 
@@ -189,9 +223,9 @@ void setup_ap_init() {
 
     // Set WIFI mode to AP so user can connect to it.
     ESP_EC(esp_wifi_set_mode(WIFI_MODE_APSTA));
-    
+
     // Apply the AP configuration to the AP interface.
-    ESP_EC(esp_wifi_set_config(WIFI_IF_AP, (wifi_config_t*)&SETUP_AP_CONFIG));
+    ESP_EC(esp_wifi_set_config(WIFI_IF_AP, (wifi_config_t *)&SETUP_AP_CONFIG));
 
     // Start wifi driver, load everything into memory.
     ESP_EC(esp_wifi_start());
@@ -234,13 +268,16 @@ setup_ap_server_t *setup_ap_start_server() {
     ESP_EC(httpd_start(&server->_server_handle, &SETUP_HTTP_CONFIG));
     httpd_register_uri_handler(server->_server_handle, &main_get);
     httpd_register_uri_handler(server->_server_handle, &main_post);
-    
+
     return server;
 }
 
 void setup_ap_stop_server(setup_ap_server_t *server) {
     if (server != glob_server) {
-        ESP_LOGE(TAG, "Called setup_ap_stop_server with unexpected server reference!\nExpected: %p, recieved: %p", glob_server, server);
+        ESP_LOGE(TAG,
+                 "Called setup_ap_stop_server with unexpected server "
+                 "reference!\nExpected: %p, recieved: %p",
+                 glob_server, server);
         abort();
     }
     glob_server = NULL;
@@ -282,14 +319,17 @@ void reset_setup_server_state(setup_ap_server_t *server) {
     POSIX_EC(pthread_mutex_unlock(&server->_mutex));
 }
 
-void setup_server_error_format(setup_ap_server_t *server, int buflen, char *buffer, const char *format) {
+void setup_server_error_format(setup_ap_server_t *server, int buflen,
+                               char *buffer, const char *format) {
     NPC(server);
     NPC(buffer);
     NPC(format);
     POSIX_EC(pthread_mutex_lock(&server->_mutex));
-    int len_needed = snprintf(buffer, buflen, format, netinfo_error_explain(server->_error));
+    int len_needed =
+        snprintf(buffer, buflen, format, netinfo_error_explain(server->_error));
     if (len_needed >= buflen) {
-        ESP_LOGW(TAG, "Setup server error message can't fit in provided buffer!");
+        ESP_LOGW(TAG,
+                 "Setup server error message can't fit in provided buffer!");
     }
     POSIX_EC(pthread_mutex_unlock(&server->_mutex));
 }
@@ -313,7 +353,8 @@ void fill_netinfo(setup_ap_server_t *server) {
 void wait_for_netinfo_filled(setup_ap_server_t *server) {
     POSIX_EC(pthread_mutex_lock(&server->_mutex));
     while (server->_state != ss_WaitingForNetInfo) {
-        POSIX_EC(pthread_cond_wait(&server->_release_to_connect, &server->_mutex));
+        POSIX_EC(
+            pthread_cond_wait(&server->_release_to_connect, &server->_mutex));
     }
     POSIX_EC(pthread_mutex_unlock(&server->_mutex));
 }
@@ -326,5 +367,3 @@ void tried_connecting(setup_ap_server_t *server, setup_error_t error) {
     POSIX_EC(pthread_cond_signal(&server->_release_from_connect))
     POSIX_EC(pthread_mutex_unlock(&server->_mutex));
 }
-
-

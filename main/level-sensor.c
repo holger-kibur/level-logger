@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "esp_err.h"
 #include "esp_event.h"
 #include "esp_log.h"
@@ -7,8 +6,9 @@
 #include "freertos/portmacro.h"
 #include "nvs_flash.h"
 #include "setup_ap.h"
+#include <stdio.h>
 
-static const char* TAG = "MAIN";
+static const char *TAG = "MAIN";
 
 void do_setup(void) {
     // Initialize ESP stuff for the access point
@@ -16,13 +16,13 @@ void do_setup(void) {
 
     // Start the server
     setup_ap_server_t *setup_server = setup_ap_start_server();
-    
+
     // Loop until setup succeeds
     while (true) {
         // Block until the user has submitted network and target information
         // through the setup website.
         wait_for_netinfo_filled(setup_server);
-        
+
         // Attempt to connect to the network with given ssid and password
         ESP_LOGI(TAG, "Connecting to network %s...", setup_server->info.ssid);
 
@@ -30,7 +30,7 @@ void do_setup(void) {
         tried_connecting(setup_server, se_None);
         break;
     }
-    
+
     // Give the user 5s to see the successful connection
     vTaskDelay(5000 / portTICK_PERIOD_MS);
 
@@ -42,8 +42,7 @@ void do_setup(void) {
     setup_ap_deinit();
 }
 
-void app_main(void)
-{
+void app_main(void) {
     // Init NVS
     ESP_ERROR_CHECK(nvs_flash_init());
 

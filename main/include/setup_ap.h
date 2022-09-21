@@ -1,8 +1,8 @@
 #ifndef SETUP_AP_H
 #define SETUP_AP_H
 
-#include <pthread.h>
 #include "esp_http_server.h"
+#include <pthread.h>
 
 typedef struct network_info_t {
     // This field STORES the data for the other fields in a contiguous array of
@@ -62,7 +62,8 @@ void tried_connecting(setup_ap_server_t *server, setup_error_t error);
 _setup_state_t get_setup_server_state(setup_ap_server_t *server);
 _setup_state_t get_setup_server_state(setup_ap_server_t *server);
 void reset_setup_server_state(setup_ap_server_t *server);
-void setup_server_error_format(setup_ap_server_t *server, int buflen, char *buffer, const char *format);
+void setup_server_error_format(setup_ap_server_t *server, int buflen,
+                               char *buffer, const char *format);
 void fill_netinfo(setup_ap_server_t *server);
 
 #endif // SETUP_AP_H
