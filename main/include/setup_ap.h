@@ -5,6 +5,11 @@
 #include "esp_http_server.h"
 
 typedef struct network_info_t {
+    // This field STORES the data for the other fields in a contiguous array of
+    // c-strings.
+    char buffer[256];
+
+    // These fields are ALIASES of the buffer field.
     char *ssid;
     char *password;
     char *target;
@@ -16,7 +21,11 @@ typedef enum setup_error_t {
     se_UnmatchedPair,
     se_UnknownField,
     se_SsidTooLong,
+    se_SsidMissing,
     se_PskTooLong,
+    se_PskMissing,
+    se_Missing,
+    se_DevnameMissing,
 } setup_error_t;
 
 typedef enum _setup_state_t {
@@ -27,13 +36,17 @@ typedef enum _setup_state_t {
 } _setup_state_t;
 
 typedef struct setup_ap_server_t {
-    network_info_t info;
-    setup_error_t _error;
-    _setup_state_t _state;
     pthread_mutex_t _mutex;
     pthread_cond_t _release_to_connect;
     pthread_cond_t _release_from_connect;
+
+    // UNSYNCHRONRIZED FIELDS
+    network_info_t info;
     httpd_handle_t _server_handle;
+
+    // SYNCHRONIZED FIELDS
+    setup_error_t _error;
+    _setup_state_t _state;
 } setup_ap_server_t;
 
 void setup_ap_config_netif();
@@ -50,5 +63,6 @@ _setup_state_t get_setup_server_state(setup_ap_server_t *server);
 _setup_state_t get_setup_server_state(setup_ap_server_t *server);
 void reset_setup_server_state(setup_ap_server_t *server);
 void setup_server_error_format(setup_ap_server_t *server, int buflen, char *buffer, const char *format);
+void fill_netinfo(setup_ap_server_t *server);
 
 #endif // SETUP_AP_H

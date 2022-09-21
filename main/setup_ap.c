@@ -43,12 +43,15 @@ static const char *SETUP_ERROR_HTML_FORMAT = "<!DOCTYPE html><html><body><h1 sty
 
 static setup_ap_server_t *glob_server = NULL;
 
-static setup_error_t netinfo_from_post(network_info_t *netinfo, char *post_cursor) {
-    while (*post_cursor != '\0') {
+static setup_error_t parse_netinfo_from_post(network_info_t *netinfo) {
+    NPC(netinfo);
+    netinfo->ssid = NULL;
+    netinfo->password = NULL;
+    netinfo->target = NULL;
+    netinfo->devname = NULL;
+    char *post_cursor = netinfo->buffer;
+    while (post_cursor < strchr(netinfo->buffer, '\0')) {
         char *field = strtok_r(post_cursor, "=", &post_cursor);
-        if (*post_cursor == '\0') {
-            return se_UnmatchedPair;
-        }
         char *value = strtok_r(post_cursor, "&", &post_cursor);
         if (strcmp(field, "ssid") == 0) {
             netinfo->ssid = value;
@@ -61,6 +64,18 @@ static setup_error_t netinfo_from_post(network_info_t *netinfo, char *post_curso
         } else {
             return se_UnknownField;
         }
+    }
+    if (netinfo->ssid == NULL) {
+        return se_SsidMissing;
+    }
+    if (netinfo->password == NULL) {
+        return se_PskMissing;
+    }
+    if (netinfo->target == NULL) {
+        return se_TargetMissing;
+    }
+    if (netinfo->devname == NULL) {
+        return se_DevnameMissing;
     }
     return se_None;
 }
@@ -92,9 +107,9 @@ static const char *netinfo_error_explain(setup_error_t error) {
     }
 }
 
-static void resp_with_redirect(httpd_req_t *request, char *url) {
+static void resp_with_refresh(httpd_req_t *request) {
     ESP_EC(httpd_resp_set_status(request, "302"));
-    ESP_EC(httpd_resp_set_hdr(request, "Location", url));
+    ESP_EC(httpd_resp_set_hdr(request, "Location", "/"));
     ESP_EC(httpd_resp_send(request, "", 0));
 }
 
@@ -129,26 +144,27 @@ static esp_err_t main_get_handler(httpd_req_t *request) {
 }
 
 static esp_err_t main_post_handler(httpd_req_t *request) {
+    NPC(glob_server);
     ESP_LOGI(TAG, "Received POST request from form page!");
-    char post_content[256];
     
     // Check if the POST content length is more than the buffer size.
     int copy_len = request->content_len;
-    if (copy_len > sizeof(post_content)) {
+    int max_len = sizeof(glob_server->info.buffer);
+    if (copy_len > max_len) {
         ESP_LOGW(TAG, "POST content is bigger than can fit in the buffer. Check form HTML.");
         // Truncate content to fit in buffer.
-        copy_len = sizeof(post_content);
+        copy_len = max_len;
     }
 
-    int recv_status = httpd_req_recv(request, post_content, copy_len);
+    int recv_status = httpd_req_recv(request, glob_server->info.buffer, copy_len);
     if (recv_status <= 0) {
         return ESP_FAIL;
     }
     
-    ESP_LOGV(TAG, "Post Content:\n%s", post_content);
+    ESP_LOGI(TAG, "Post Content:\n%s", glob_server->info.buffer);
+    fill_netinfo(glob_server);
 
-    // Respond with 302 redirect to status page
-    resp_with_redirect(request, "status");
+    resp_with_refresh(request);
 
     return ESP_OK;
 }
@@ -274,6 +290,22 @@ void setup_server_error_format(setup_ap_server_t *server, int buflen, char *buff
     int len_needed = snprintf(buffer, buflen, format, netinfo_error_explain(server->_error));
     if (len_needed >= buflen) {
         ESP_LOGW(TAG, "Setup server error message can't fit in provided buffer!");
+    }
+    POSIX_EC(pthread_mutex_unlock(&server->_mutex));
+}
+
+void fill_netinfo(setup_ap_server_t *server) {
+    NPC(server);
+    POSIX_EC(pthread_mutex_lock(&server->_mutex));
+    server->_error = parse_netinfo_from_post(&server->info);
+    if (server->_error == se_None) {
+        server->_error = netinfo_validate(&server->info);
+    }
+    if (server->_error != se_None) {
+        server->_state = ss_Failure;
+    } else {
+        server->_state = ss_WaitingForConnection;
+        // TODO: Signal the condvar bruh
     }
     POSIX_EC(pthread_mutex_unlock(&server->_mutex));
 }

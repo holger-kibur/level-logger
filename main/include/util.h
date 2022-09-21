@@ -8,7 +8,7 @@
 #define POSIX_EC(X)                                                   \
   {                                                                            \
     if ((X) < 0) {                                                               \
-      ESP_LOGE(TAG, "POSIX error check failed!\nCode:%s\nMessage: %s", errno,  \
+      ESP_LOGE(TAG, "POSIX error check failed!\nCode:%d\nMessage: %s", errno,  \
                strerror(errno));                                               \
       abort();                                                                 \
     }                                                                          \

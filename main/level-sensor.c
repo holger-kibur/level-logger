@@ -4,6 +4,7 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
+#include "freertos/portmacro.h"
 #include "nvs_flash.h"
 #include "setup_ap.h"
 
@@ -31,7 +32,7 @@ void do_setup(void) {
     }
     
     // Give the user 5s to see the successful connection
-    vTaskDelay(5000 / portTICK_RATE_MS);
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
 
     // Stop the setup access point and server
     setup_ap_stop_server(setup_server);
