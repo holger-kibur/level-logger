@@ -24,7 +24,7 @@ typedef enum setup_error_t {
     se_SsidMissing,
     se_PskTooLong,
     se_PskMissing,
-    se_Missing,
+    se_TargetMissing,
     se_DevnameMissing,
 } setup_error_t;
 
@@ -38,7 +38,6 @@ typedef enum _setup_state_t {
 typedef struct setup_ap_server_t {
     pthread_mutex_t _mutex;
     pthread_cond_t _release_to_connect;
-    pthread_cond_t _release_from_connect;
 
     // UNSYNCHRONRIZED FIELDS
     network_info_t info;

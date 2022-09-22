@@ -1,3 +1,5 @@
+#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+
 #include "setup_ap.h"
 #include "const.h"
 #include "esp_err.h"
@@ -29,7 +31,7 @@ static const wifi_config_t SETUP_AP_CONFIG = {
             .beacon_interval = 100, // Standard 802.11 beacon interval.
             .pairwise_cipher = WIFI_CIPHER_TYPE_NONE, // Open connection, we
                                                       // don't need a cipher.
-            .ftm_responder = false, // ??
+            .ftm_responder = false,                   // ??
             .pmf_cfg =
                 {
                     // We don't need Protected Management Frame capability.
@@ -195,7 +197,7 @@ static esp_err_t main_post_handler(httpd_req_t *request) {
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "Post Content:\n%s", glob_server->info.buffer);
+    ESP_LOGD(TAG, "Post Content:\n%s", glob_server->info.buffer);
     fill_netinfo(glob_server);
 
     resp_with_refresh(request);
@@ -291,7 +293,6 @@ setup_ap_server_t *create_setup_server() {
     ret->_state = ss_WaitingForNetInfo;
     POSIX_EC(pthread_mutex_init(&ret->_mutex, NULL));
     POSIX_EC(pthread_cond_init(&ret->_release_to_connect, NULL));
-    POSIX_EC(pthread_cond_init(&ret->_release_from_connect, NULL));
     memset(&ret->_server_handle, 0, sizeof(httpd_handle_t));
     return ret;
 }
@@ -300,7 +301,6 @@ void destroy_setup_server(setup_ap_server_t *server) {
     NPC(server);
     POSIX_EC(pthread_mutex_destroy(&server->_mutex));
     POSIX_EC(pthread_cond_destroy(&server->_release_to_connect));
-    POSIX_EC(pthread_cond_destroy(&server->_release_from_connect));
     ESP_EC(httpd_stop(server->_server_handle));
 }
 
@@ -338,14 +338,21 @@ void fill_netinfo(setup_ap_server_t *server) {
     NPC(server);
     POSIX_EC(pthread_mutex_lock(&server->_mutex));
     server->_error = parse_netinfo_from_post(&server->info);
+    ESP_LOGD(TAG, "Error parsing network info: %s!", netinfo_error_explain(server->_error));
     if (server->_error == se_None) {
+        ESP_LOGD(TAG,
+                 "Parsed network info.\nSSID: %s\nPSK: %s\nTarget: %s\nDevice "
+                 "Name: %s",
+                 server->info.ssid, server->info.password, server->info.target,
+                 server->info.devname);
         server->_error = netinfo_validate(&server->info);
     }
     if (server->_error != se_None) {
         server->_state = ss_Failure;
     } else {
         server->_state = ss_WaitingForConnection;
-        // TODO: Signal the condvar bruh
+        // Signal main thread that it should try to connect with given netinfo.
+        POSIX_EC(pthread_cond_signal(&server->_release_to_connect));
     }
     POSIX_EC(pthread_mutex_unlock(&server->_mutex));
 }
@@ -364,6 +371,5 @@ void tried_connecting(setup_ap_server_t *server, setup_error_t error) {
     POSIX_EC(pthread_mutex_lock(&server->_mutex));
     server->_error = error;
     server->_state = (error == se_None ? ss_Success : ss_Failure);
-    POSIX_EC(pthread_cond_signal(&server->_release_from_connect))
     POSIX_EC(pthread_mutex_unlock(&server->_mutex));
 }
