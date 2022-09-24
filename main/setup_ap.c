@@ -1,5 +1,3 @@
-#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
-
 #include "setup_ap.h"
 #include "const.h"
 #include "esp_err.h"
@@ -16,7 +14,7 @@
 #include <string.h>
 #include <sys/errno.h>
 
-static const char *TAG = "SETUP ACCESS POINT";
+static const char *TAG = "setup_ap";
 static const wifi_config_t SETUP_AP_CONFIG = {
     .ap =
         {
@@ -73,7 +71,7 @@ static setup_error_t parse_netinfo_from_post(network_info_t *netinfo) {
     netinfo->target = NULL;
     netinfo->devname = NULL;
     char *post_cursor = netinfo->buffer;
-    while (post_cursor < strchr(netinfo->buffer, '\0')) {
+    while (post_cursor != NULL) {
         char *field = strtok_r(post_cursor, "=", &post_cursor);
         char *value = strtok_r(post_cursor, "&", &post_cursor);
         if (strcmp(field, "ssid") == 0) {
@@ -116,18 +114,26 @@ static setup_error_t netinfo_validate(network_info_t *netinfo) {
 static const char *netinfo_error_explain(setup_error_t error) {
     switch (error) {
     case se_None:
-        return "No error.";
+        return "No error";
     case se_UnmatchedPair:
-        return "Form POST request content contains an incomplete field=value "
+        return "Form POST request content contains an incomplete field=value"
                "pair.";
     case se_UnknownField:
-        return "Unknown field in form POST request content.";
+        return "Unknown field in form POST request content";
     case se_SsidTooLong:
-        return "Network SSID too long.";
+        return "Network SSID too long";
+    case se_SsidMissing:
+        return "Network SSID missing";
     case se_PskTooLong:
-        return "Network password (PSK) too long.";
+        return "Network password (PSK) too long";
+    case se_PskMissing:
+        return "Network password (PSK) missing";
+    case se_TargetMissing:
+        return "Target missing";
+    case se_DevnameMissing:
+        return "Device name missing";
     default:
-        return "Unexplainable error.";
+        return "Unexplainable error";
     }
 }
 
@@ -206,9 +212,6 @@ static esp_err_t main_post_handler(httpd_req_t *request) {
 }
 
 void setup_ap_config_netif() {
-    ESP_EC(esp_netif_init());
-    ESP_EC(esp_event_loop_create_default());
-
     esp_netif_ip_info_t ap_ip_info;
     esp_netif_set_ip4_addr(&ap_ip_info.ip, 192, 168, 1, 1);
     esp_netif_set_ip4_addr(&ap_ip_info.gw, 0, 0, 0, 0);
@@ -223,8 +226,8 @@ void setup_ap_config_netif() {
 void setup_ap_init() {
     ESP_LOGI(TAG, "Starting setup access point initialization!");
 
-    // Set WIFI mode to AP so user can connect to it.
-    ESP_EC(esp_wifi_set_mode(WIFI_MODE_APSTA));
+    // Set up logging for module
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
 
     // Apply the AP configuration to the AP interface.
     ESP_EC(esp_wifi_set_config(WIFI_IF_AP, (wifi_config_t *)&SETUP_AP_CONFIG));
@@ -335,31 +338,39 @@ void setup_server_error_format(setup_ap_server_t *server, int buflen,
 }
 
 void fill_netinfo(setup_ap_server_t *server) {
+    ESP_LOGD(TAG, "entering fill_netinfo");
     NPC(server);
     POSIX_EC(pthread_mutex_lock(&server->_mutex));
     server->_error = parse_netinfo_from_post(&server->info);
-    ESP_LOGD(TAG, "Error parsing network info: %s!", netinfo_error_explain(server->_error));
     if (server->_error == se_None) {
-        ESP_LOGD(TAG,
-                 "Parsed network info.\nSSID: %s\nPSK: %s\nTarget: %s\nDevice "
+        ESP_LOGI(TAG,
+                 "Parsed network info:\nSSID: %s\nPSK: %s\nTarget: %s\nDevice "
                  "Name: %s",
                  server->info.ssid, server->info.password, server->info.target,
                  server->info.devname);
         server->_error = netinfo_validate(&server->info);
+    } else {
+        ESP_LOGI(TAG, "Error parsing network info: %s!",
+                 netinfo_error_explain(server->_error));
     }
     if (server->_error != se_None) {
+        ESP_LOGI(TAG, "Network info invalid: %s!",
+                 netinfo_error_explain(server->_error));
         server->_state = ss_Failure;
     } else {
+        ESP_LOGD(TAG, "validated network info");
         server->_state = ss_WaitingForConnection;
-        // Signal main thread that it should try to connect with given netinfo.
-        POSIX_EC(pthread_cond_signal(&server->_release_to_connect));
     }
     POSIX_EC(pthread_mutex_unlock(&server->_mutex));
+
+    // Signal main thread that it should try to connect with given netinfo.
+    ESP_LOGD(TAG, "signaling release_to_connect condition");
+    POSIX_EC(pthread_cond_signal(&server->_release_to_connect));
 }
 
 void wait_for_netinfo_filled(setup_ap_server_t *server) {
     POSIX_EC(pthread_mutex_lock(&server->_mutex));
-    while (server->_state != ss_WaitingForNetInfo) {
+    while (server->_state != ss_WaitingForConnection) {
         POSIX_EC(
             pthread_cond_wait(&server->_release_to_connect, &server->_mutex));
     }

@@ -1,0 +1,2 @@
+Add more sophisticated network info field validation (special characters and
+stuff like that)

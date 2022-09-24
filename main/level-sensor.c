@@ -6,9 +6,10 @@
 #include "freertos/portmacro.h"
 #include "nvs_flash.h"
 #include "setup_ap.h"
+#include "util.h"
 #include <stdio.h>
 
-static const char *TAG = "MAIN";
+static const char *TAG = "level_logger_main";
 
 void do_setup(void) {
     // Initialize ESP stuff for the access point
@@ -22,9 +23,11 @@ void do_setup(void) {
         // Block until the user has submitted network and target information
         // through the setup website.
         wait_for_netinfo_filled(setup_server);
+        ESP_LOGD(TAG, "netinfo filling unblocked, continuing on main thread");
 
         // Attempt to connect to the network with given ssid and password
         ESP_LOGI(TAG, "Connecting to network %s...", setup_server->info.ssid);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
 
         // We succeeded in connecting, break out of the loop.
         tried_connecting(setup_server, se_None);
@@ -43,19 +46,28 @@ void do_setup(void) {
 }
 
 void app_main(void) {
+    // Init logging
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+
     // Init NVS
     ESP_ERROR_CHECK(nvs_flash_init());
 
-    // Initialize network interface for the setup AP.
+    // Init network interface and event loop
+    ESP_EC(esp_netif_init());
+    ESP_EC(esp_event_loop_create_default());
+
+    // Configure network interface for the setup AP.
     setup_ap_config_netif();
+
+    // Configure network interface for the station
+
+    // Set WIFI mode to APSTA for both setup and client modes
+    ESP_EC(esp_wifi_set_mode(WIFI_MODE_APSTA));
 
     // Initialize WIFI driver.
     wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&wifi_config));
 
-    // Initialize AP driver
-    setup_ap_init();
-
-    // Start the HTTP server
-    setup_ap_start_server();
+    // Do main thread setup logic
+    do_setup();
 }
