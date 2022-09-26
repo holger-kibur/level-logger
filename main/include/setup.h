@@ -48,9 +48,6 @@ typedef struct setup_ap_server_t {
     _setup_state_t _state;
 } setup_ap_server_t;
 
-void setup_ap_config_netif();
-void setup_ap_init();
-void setup_ap_deinit();
 setup_ap_server_t *setup_ap_start_server();
 void setup_ap_stop_server(setup_ap_server_t *server);
 

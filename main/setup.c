@@ -1,4 +1,3 @@
-#include "setup_ap.h"
 #include "const.h"
 #include "esp_err.h"
 #include "esp_event.h"
@@ -8,6 +7,7 @@
 #include "esp_netif_types.h"
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
+#include "setup_ap.h"
 #include "util.h"
 #include <errno.h>
 #include <pthread.h>
@@ -15,29 +15,6 @@
 #include <sys/errno.h>
 
 static const char *TAG = "setup_ap";
-static const wifi_config_t SETUP_AP_CONFIG = {
-    .ap =
-        {
-            .ssid = SETUP_AP_SSID,
-            .ssid_len = 0,    // Treat SSID as null terminated string.
-            .ssid_hidden = 0, // Broadcast the SSID.
-            .password = "",   // No password because it's open.
-            .channel = 1,     // First channel, usable in all countries.
-            .authmode = WIFI_AUTH_OPEN, // No security.
-            .max_connection = 1, // Only one device should be able to connect at
-                                 // a time.
-            .beacon_interval = 100, // Standard 802.11 beacon interval.
-            .pairwise_cipher = WIFI_CIPHER_TYPE_NONE, // Open connection, we
-                                                      // don't need a cipher.
-            .ftm_responder = false,                   // ??
-            .pmf_cfg =
-                {
-                    // We don't need Protected Management Frame capability.
-                    .capable = false,
-                    .required = false,
-                },
-        },
-};
 static const httpd_config_t SETUP_HTTP_CONFIG = HTTPD_DEFAULT_CONFIG();
 static const char *SETUP_FORM_HTML =
     "<!DOCTYPE html><html><form action=/ method=POST>SSID:<br><input "
@@ -209,42 +186,6 @@ static esp_err_t main_post_handler(httpd_req_t *request) {
     resp_with_refresh(request);
 
     return ESP_OK;
-}
-
-void setup_ap_config_netif() {
-    esp_netif_ip_info_t ap_ip_info;
-    esp_netif_set_ip4_addr(&ap_ip_info.ip, 192, 168, 1, 1);
-    esp_netif_set_ip4_addr(&ap_ip_info.gw, 0, 0, 0, 0);
-    esp_netif_set_ip4_addr(&ap_ip_info.netmask, 255, 255, 255, 0);
-
-    esp_netif_t *setup_ap_netif = esp_netif_create_default_wifi_ap();
-    ESP_EC(esp_netif_dhcps_stop(setup_ap_netif));
-    ESP_EC(esp_netif_set_ip_info(setup_ap_netif, &ap_ip_info));
-    ESP_EC(esp_netif_dhcps_start(setup_ap_netif));
-}
-
-void setup_ap_init() {
-    ESP_LOGI(TAG, "Starting setup access point initialization!");
-
-    // Set up logging for module
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
-
-    // Apply the AP configuration to the AP interface.
-    ESP_EC(esp_wifi_set_config(WIFI_IF_AP, (wifi_config_t *)&SETUP_AP_CONFIG));
-
-    // Start wifi driver, load everything into memory.
-    ESP_EC(esp_wifi_start());
-
-    ESP_LOGI(TAG, "Finished setup access point initialization!");
-}
-
-void setup_ap_deinit() {
-    ESP_LOGI(TAG, "Starting setup access point deinitialization!");
-
-    // Stop wifi driver.
-    ESP_EC(esp_wifi_stop());
-
-    ESP_LOGI(TAG, "Finished setup access point deinitialization!");
 }
 
 setup_ap_server_t *setup_ap_start_server() {

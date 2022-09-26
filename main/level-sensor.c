@@ -1,3 +1,4 @@
+#include "access_point.h"
 #include "esp_err.h"
 #include "esp_event.h"
 #include "esp_log.h"
@@ -5,7 +6,8 @@
 #include "esp_wifi.h"
 #include "freertos/portmacro.h"
 #include "nvs_flash.h"
-#include "setup_ap.h"
+#include "setup.h"
+#include "station.h"
 #include "util.h"
 #include <stdio.h>
 
@@ -56,10 +58,11 @@ void app_main(void) {
     ESP_EC(esp_netif_init());
     ESP_EC(esp_event_loop_create_default());
 
-    // Configure network interface for the setup AP.
-    setup_ap_config_netif();
+    // Configure network interface for the access point
+    ll_access_point_init();
 
     // Configure network interface for the station
+    ll_station_init();
 
     // Set WIFI mode to APSTA for both setup and client modes
     ESP_EC(esp_wifi_set_mode(WIFI_MODE_APSTA));
