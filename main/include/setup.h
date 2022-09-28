@@ -18,12 +18,15 @@ typedef struct network_info_t {
 
 typedef enum setup_error_t {
     se_None,
+    se_GenNetConnect,
     se_UnmatchedPair,
     se_UnknownField,
     se_SsidTooLong,
     se_SsidMissing,
+    se_SsidIncorrect,
     se_PskTooLong,
     se_PskMissing,
+    se_PskIncorrect,
     se_TargetMissing,
     se_DevnameMissing,
 } setup_error_t;

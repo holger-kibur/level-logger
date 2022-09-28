@@ -37,14 +37,37 @@ static wifi_config_t glob_sta_config = {
         .sae_pwe_h2e = WPA3_SAE_PWE_BOTH,
     }};
 
-static void handle_sta_connect(void *conn_attempt, esp_event_base_t base,
-                               int32_t id, void *event_data) {}
+static void handle_sta_connect(void *handler_data, esp_event_base_t base,
+                               int32_t id, void *event_data) {
+    NPC(handler_data);
+    conn_attempt_t *conn_attempt = (conn_attempt_t *)handler_data;
+    POSIX_EC(pthread_mutex_lock(&conn_attempt->mutex));
+    conn_attempt->state = cas_ConnectSuccess;
+    POSIX_EC(pthread_mutex_unlock(&conn_attempt->mutex));
+    POSIX_EC(pthread_cond_signal(&conn_attempt->state_changed));
+}
 
-static void handle_sta_disconnect(void *conn_attempt, esp_event_base_t base,
-                                  int32_t id, void *event_data) {}
+static void handle_sta_disconnect(void *handler_data, esp_event_base_t base,
+                                  int32_t id, void *event_data) {
+    NPC(handler_data);
+    conn_attempt_t *conn_attempt = (conn_attempt_t *)handler_data;
+    POSIX_EC(pthread_mutex_lock(&conn_attempt->mutex));
+    conn_attempt->state = cas_Failed;
+    conn_attempt->fail_reason =
+        ((wifi_event_sta_disconnected_t *)event_data)->reason;
+    POSIX_EC(pthread_mutex_unlock(&conn_attempt->mutex));
+    POSIX_EC(pthread_cond_signal(&conn_attempt->state_changed));
+}
 
-static void handle_sta_got_ip(void *conn_attempt, esp_event_base_t base,
-                              int32_t id, void *event_data) {}
+static void handle_sta_got_ip(void *handler_data, esp_event_base_t base,
+                              int32_t id, void *event_data) {
+    NPC(handler_data);
+    conn_attempt_t *conn_attempt = (conn_attempt_t *)handler_data;
+    POSIX_EC(pthread_mutex_lock(&conn_attempt->mutex));
+    conn_attempt->state = cas_DhcpSuccess;
+    POSIX_EC(pthread_mutex_unlock(&conn_attempt->mutex));
+    POSIX_EC(pthread_cond_signal(&conn_attempt->state_changed));
+}
 
 void ll_station_init() {
     esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
@@ -111,4 +134,18 @@ void ll_station_stop_conn_fsm(conn_attempt_t *conn_attempt) {
         WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, NULL));
     ESP_EC(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP,
                                                  NULL));
+}
+
+conn_attempt_state_t ll_station_get_state(conn_attempt_t *conn_attempt) {
+    POSIX_EC(pthread_mutex_lock(&conn_attempt->mutex));
+    conn_attempt_state_t state = conn_attempt->state;
+    POSIX_EC(pthread_mutex_unlock(&conn_attempt->mutex));
+    return state;
+}
+
+uint8_t ll_station_get_fail_reason(conn_attempt_t *conn_attempt) {
+    POSIX_EC(pthread_mutex_lock(&conn_attempt->mutex));
+    uint8_t reason = conn_attempt->fail_reason;
+    POSIX_EC(pthread_mutex_unlock(&conn_attempt->mutex));
+    return reason;
 }

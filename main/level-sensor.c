@@ -1,4 +1,5 @@
 #include "access_point.h"
+#include "client.h"
 #include "esp_err.h"
 #include "esp_event.h"
 #include "esp_log.h"
@@ -25,8 +26,27 @@ void do_setup(void) {
         ESP_LOGD(TAG, "netinfo filling unblocked, continuing on main thread");
 
         // Attempt to connect to the network with given ssid and password
-        ESP_LOGI(TAG, "Connecting to network %s...", setup_server->info.ssid);
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        connect_result_t connect_res = try_connect_to_network(
+            setup_server->info.ssid, setup_server->info.password);
+        setup_error_t setup_err = se_None;
+        switch (connect_res) {
+        case cr_InvalidSsid:
+            setup_err = se_SsidIncorrect;
+            break;
+        case cr_InvalidPass:
+            setup_err = se_PskIncorrect;
+            break;
+        case cr_TechnicalError:
+            setup_err = se_GenNetConnect;
+            break;
+        default:
+            // Connection succeeded
+            break;
+        }
+        if (setup_err != se_None) {
+            tried_connecting(setup_server, setup_err);
+            continue;
+        }
 
         // We succeeded in connecting, break out of the loop.
         tried_connecting(setup_server, se_None);
