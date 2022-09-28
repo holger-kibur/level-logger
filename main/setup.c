@@ -1,3 +1,4 @@
+#include "setup.h"
 #include "const.h"
 #include "esp_err.h"
 #include "esp_event.h"
@@ -7,7 +8,6 @@
 #include "esp_netif_types.h"
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
-#include "setup.h"
 #include "util.h"
 #include <errno.h>
 #include <pthread.h>

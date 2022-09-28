@@ -1,2 +1,4 @@
 Add more sophisticated network info field validation (special characters and
 stuff like that)
+
+Finish the WIFI event handlers stubs in station

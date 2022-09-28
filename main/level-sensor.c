@@ -39,8 +39,6 @@ void do_setup(void) {
     // Stop the setup access point and server
     setup_ap_stop_server(setup_server);
     setup_server = NULL;
-
-
 }
 
 void app_main(void) {

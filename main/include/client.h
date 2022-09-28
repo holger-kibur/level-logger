@@ -4,6 +4,8 @@
 typedef enum connect_error_t {
     cr_None,
     cr_InvalidSsid,
+    cr_InvalidPass,
+    cr_TechnicalError,
 } connect_result_t;
 
 connect_result_t try_connect_to_network(char *ssid, char *pass);
