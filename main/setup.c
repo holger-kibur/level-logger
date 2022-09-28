@@ -7,7 +7,7 @@
 #include "esp_netif_types.h"
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
-#include "setup_ap.h"
+#include "setup.h"
 #include "util.h"
 #include <errno.h>
 #include <pthread.h>
@@ -82,7 +82,7 @@ static setup_error_t netinfo_validate(network_info_t *netinfo) {
     if (strlen(netinfo->ssid) >= MAX_SSID_LEN) {
         return se_SsidTooLong;
     }
-    if (strlen(netinfo->password) >= MAX_PSK_LEN) {
+    if (strlen(netinfo->password) >= MAX_PASSPHRASE_LEN) {
         return se_PskTooLong;
     }
     return se_None;
@@ -232,6 +232,7 @@ void setup_ap_stop_server(setup_ap_server_t *server) {
 
 setup_ap_server_t *create_setup_server() {
     setup_ap_server_t *ret = malloc(sizeof(setup_ap_server_t));
+    NPC(ret);
     memset(&ret->info, 0, sizeof(network_info_t));
     ret->_error = se_None;
     ret->_state = ss_WaitingForNetInfo;
@@ -246,6 +247,7 @@ void destroy_setup_server(setup_ap_server_t *server) {
     POSIX_EC(pthread_mutex_destroy(&server->_mutex));
     POSIX_EC(pthread_cond_destroy(&server->_release_to_connect));
     ESP_EC(httpd_stop(server->_server_handle));
+    free(server);
 }
 
 _setup_state_t get_setup_server_state(setup_ap_server_t *server) {

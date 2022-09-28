@@ -5,6 +5,7 @@
 #include "esp_wifi_default.h"
 #include "esp_wifi_types.h"
 #include "util.h"
+#include <pthread.h>
 #include <string.h>
 
 static const char *TAG = "ll_station";
@@ -43,4 +44,21 @@ void ll_station_set_network_params(char *ssid, char *pass) {
     strncpy((char *)&glob_sta_config.sta.ssid, ssid, MAX_SSID_LEN);
     strncpy((char *)&glob_sta_config.sta.password, pass, MAX_PASSPHRASE_LEN);
     ESP_EC(esp_wifi_set_config(WIFI_IF_STA, &glob_sta_config));
+}
+
+conn_attempt_t ll_station_create_conn_attempt() {
+    conn_attempt_t *ret = malloc(sizeof(conn_attempt_t));
+    NPC(ret);
+    ret->state = cas_Initial;
+    POSIX_EC(pthread_mutex_init(&ret->mutex, NULL));
+}
+
+void ll_station_destroy_conn_attempt(conn_attempt_t *conn_attempt) {
+    NPC(conn_attempt);
+    POSIX_EC(pthread_mutex_destroy(&conn_attempt->mutex));
+    free(conn_attempt);
+}
+
+void ll_station_start_conn_fsm() {
+
 }

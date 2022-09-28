@@ -14,9 +14,6 @@
 static const char *TAG = "level_logger_main";
 
 void do_setup(void) {
-    // Initialize ESP stuff for the access point
-    setup_ap_init();
-
     // Start the server
     setup_ap_server_t *setup_server = setup_ap_start_server();
 
@@ -43,8 +40,7 @@ void do_setup(void) {
     setup_ap_stop_server(setup_server);
     setup_server = NULL;
 
-    // Deinitialize the ESP stuff involved with setup
-    setup_ap_deinit();
+
 }
 
 void app_main(void) {

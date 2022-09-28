@@ -5,7 +5,7 @@
 #include "esp_wifi.h"
 #include "esp_wifi_default.h"
 #include "esp_wifi_types.h"
-#include "setup_ap.h"
+#include "setup.h"
 #include "util.h"
 
 static const char *TAG = "ll_access_point";
