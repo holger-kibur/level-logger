@@ -1,6 +1,7 @@
 #ifndef STATION_H
 #define STATION_H
 
+#include "esp_event.h"
 #include "pthread.h"
 
 typedef enum conn_attempt_state_t {
@@ -18,6 +19,11 @@ typedef struct conn_attempt_t {
     // SYNCHRONIZED FIELDS
     conn_attempt_state_t state;
     uint8_t fail_reason;
+
+    // UNSYNCHRONIZED FIELDS
+    esp_event_handler_instance_t conn_handler;
+    esp_event_handler_instance_t disconn_handler;
+    esp_event_handler_instance_t got_ip_handler;
 
 } conn_attempt_t;
 

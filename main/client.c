@@ -54,9 +54,11 @@ const char *esp_wifi_reflect_reason(uint8_t reason) {
 connect_result_t try_connect_to_network(char *ssid, char *pass) {
     NPC(ssid);
     NPC(pass);
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
     conn_attempt_t *conn_attempt = ll_station_create_conn_attempt();
     ll_station_set_network_params(ssid, pass);
     ll_station_start_conn_fsm(conn_attempt);
+    ESP_LOGD(TAG, "Started connection FSM");
     while (true) {
         ll_station_wait_for_change(conn_attempt);
         switch (ll_station_get_state(conn_attempt)) {
@@ -83,6 +85,7 @@ connect_result_t try_connect_to_network(char *ssid, char *pass) {
 
 stop_fsm:
     ll_station_stop_conn_fsm(conn_attempt);
+    ESP_LOGD(TAG, "Stopped connection FSM.");
 
     if (ll_station_get_state(conn_attempt) == cas_DhcpSuccess) {
         ll_station_destroy_conn_attempt(conn_attempt);

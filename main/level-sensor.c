@@ -72,18 +72,21 @@ void app_main(void) {
     ESP_EC(esp_netif_init());
     ESP_EC(esp_event_loop_create_default());
 
+    // Initialize WIFI driver.
+    wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&wifi_config));
+
+    // Set WIFI mode to APSTA for both setup and client modes
+    ESP_EC(esp_wifi_set_mode(WIFI_MODE_APSTA));
+
     // Configure network interface for the access point
     ll_access_point_init();
 
     // Configure network interface for the station
     ll_station_init();
 
-    // Set WIFI mode to APSTA for both setup and client modes
-    ESP_EC(esp_wifi_set_mode(WIFI_MODE_APSTA));
-
-    // Initialize WIFI driver.
-    wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&wifi_config));
+    // Start wifi
+    ESP_EC(esp_wifi_start());
 
     // Do main thread setup logic
     do_setup();

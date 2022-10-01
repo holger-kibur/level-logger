@@ -79,6 +79,7 @@ static setup_error_t parse_netinfo_from_post(network_info_t *netinfo) {
 }
 
 static setup_error_t netinfo_validate(network_info_t *netinfo) {
+    NPC(netinfo);
     if (strlen(netinfo->ssid) >= MAX_SSID_LEN) {
         return se_SsidTooLong;
     }
@@ -92,6 +93,8 @@ static const char *netinfo_error_explain(setup_error_t error) {
     switch (error) {
     case se_None:
         return "No error";
+    case se_GenNetConnect:
+        return "Couldn't establish connection to network";
     case se_UnmatchedPair:
         return "Form POST request content contains an incomplete field=value"
                "pair.";
@@ -101,10 +104,14 @@ static const char *netinfo_error_explain(setup_error_t error) {
         return "Network SSID too long";
     case se_SsidMissing:
         return "Network SSID missing";
+    case se_SsidIncorrect:
+        return "No network with given SSID found!";
     case se_PskTooLong:
         return "Network password (PSK) too long";
     case se_PskMissing:
         return "Network password (PSK) missing";
+    case se_PskIncorrect:
+        return "Authentication with given password (PSK) failed!";
     case se_TargetMissing:
         return "Target missing";
     case se_DevnameMissing:
@@ -115,12 +122,14 @@ static const char *netinfo_error_explain(setup_error_t error) {
 }
 
 static void resp_with_refresh(httpd_req_t *request) {
+    NPC(request);
     ESP_EC(httpd_resp_set_status(request, "302"));
     ESP_EC(httpd_resp_set_hdr(request, "Location", "/"));
     ESP_EC(httpd_resp_send(request, "", 0));
 }
 
 static esp_err_t main_get_handler(httpd_req_t *request) {
+    NPC(request);
     ESP_LOGI(TAG, "Received GET request from user!");
 
     // Decide which page to present to the user
@@ -161,6 +170,7 @@ static esp_err_t main_get_handler(httpd_req_t *request) {
 }
 
 static esp_err_t main_post_handler(httpd_req_t *request) {
+    NPC(request);
     NPC(glob_server);
     ESP_LOGI(TAG, "Received POST request from form page!");
 
@@ -219,6 +229,7 @@ setup_ap_server_t *setup_ap_start_server() {
 }
 
 void setup_ap_stop_server(setup_ap_server_t *server) {
+    NPC(server);
     if (server != glob_server) {
         ESP_LOGE(TAG,
                  "Called setup_ap_stop_server with unexpected server "
@@ -281,8 +292,8 @@ void setup_server_error_format(setup_ap_server_t *server, int buflen,
 }
 
 void fill_netinfo(setup_ap_server_t *server) {
-    ESP_LOGD(TAG, "entering fill_netinfo");
     NPC(server);
+    ESP_LOGD(TAG, "entering fill_netinfo");
     POSIX_EC(pthread_mutex_lock(&server->_mutex));
     server->_error = parse_netinfo_from_post(&server->info);
     if (server->_error == se_None) {
@@ -312,6 +323,7 @@ void fill_netinfo(setup_ap_server_t *server) {
 }
 
 void wait_for_netinfo_filled(setup_ap_server_t *server) {
+    NPC(server);
     POSIX_EC(pthread_mutex_lock(&server->_mutex));
     while (server->_state != ss_WaitingForConnection) {
         POSIX_EC(
