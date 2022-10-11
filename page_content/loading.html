@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv=refresh content=2/>
+        <style>
+            .loader {
+                display: inline-block;
+                border: 5px solid #f3f3f3;
+                border-radius: 50%;
+                border-top: 5px solid #000000;
+                width: 20px;
+                height: 20px;
+                -webkit-animation: spin 1s linear infinite;
+                animation: spin 1s linear infinite;
+            }
+
+            @-webit-keyframes spin {
+                0% {-webkit-transform: rotate(0deg);}
+                100% {-webkit-transform: rotate(360deg);}
+            }
+
+            @keyframes spin {
+                0% {transform: rotate(0deg);}
+                100% {transform: rotate(360deg);}
+            }
+        </style>
+    </head>
+    <body>
+        <div class="loader"></div>
+        <h1 style="display: inline; margin-left: 10px;">Connecting and verifying...</h1>
+    </body>
+</html>
+

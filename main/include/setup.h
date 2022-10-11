@@ -2,6 +2,7 @@
 #define SETUP_AP_H
 
 #include "esp_http_server.h"
+#include "scan.h"
 #include <pthread.h>
 
 typedef struct network_info_t {
@@ -45,20 +46,20 @@ typedef struct setup_ap_server_t {
     // UNSYNCHRONRIZED FIELDS
     network_info_t info;
     httpd_handle_t _server_handle;
+    bg_scan_t *scan;
 
     // SYNCHRONIZED FIELDS
     setup_error_t _error;
     _setup_state_t _state;
 } setup_ap_server_t;
 
-setup_ap_server_t *setup_ap_start_server();
+setup_ap_server_t *setup_ap_start_server(bg_scan_t *initial_scan);
 void setup_ap_stop_server(setup_ap_server_t *server);
 
-setup_ap_server_t *create_setup_server();
+setup_ap_server_t *create_setup_server(bg_scan_t *initial_scan);
 void destroy_setup_server(setup_ap_server_t *server);
 void wait_for_netinfo_filled(setup_ap_server_t *server);
 void tried_connecting(setup_ap_server_t *server, setup_error_t error);
-_setup_state_t get_setup_server_state(setup_ap_server_t *server);
 _setup_state_t get_setup_server_state(setup_ap_server_t *server);
 void reset_setup_server_state(setup_ap_server_t *server);
 void setup_server_error_format(setup_ap_server_t *server, int buflen,

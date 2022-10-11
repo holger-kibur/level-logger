@@ -8,6 +8,8 @@
 #include "esp_netif_types.h"
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
+#include "render.h"
+#include "scan.h"
 #include "util.h"
 #include <errno.h>
 #include <pthread.h>
@@ -137,8 +139,8 @@ static esp_err_t main_get_handler(httpd_req_t *request) {
     case ss_WaitingForNetInfo:
         ESP_LOGI(TAG, "Waiting for network information. Responding with "
                       "network information form page.");
-        ESP_EC(
-            httpd_resp_send(request, SETUP_FORM_HTML, HTTPD_RESP_USE_STRLEN));
+        ESP_EC(httpd_resp_send(request, render_form_page(glob_server->scan),
+                               HTTPD_RESP_USE_STRLEN));
         break;
     case ss_WaitingForConnection:
         ESP_LOGI(
@@ -198,7 +200,7 @@ static esp_err_t main_post_handler(httpd_req_t *request) {
     return ESP_OK;
 }
 
-setup_ap_server_t *setup_ap_start_server() {
+setup_ap_server_t *setup_ap_start_server(bg_scan_t *initial_scan) {
     // Create URI handlers.
     const httpd_uri_t main_get = {
         .uri = "/",
@@ -214,7 +216,7 @@ setup_ap_server_t *setup_ap_start_server() {
     };
 
     // Create the setup server object
-    setup_ap_server_t *server = create_setup_server();
+    setup_ap_server_t *server = create_setup_server(initial_scan);
 
     // Globalize the created server
     NOT_NPC(glob_server);
@@ -241,12 +243,13 @@ void setup_ap_stop_server(setup_ap_server_t *server) {
     destroy_setup_server(server);
 }
 
-setup_ap_server_t *create_setup_server() {
+setup_ap_server_t *create_setup_server(bg_scan_t *initial_scan) {
     setup_ap_server_t *ret = malloc(sizeof(setup_ap_server_t));
     NPC(ret);
     memset(&ret->info, 0, sizeof(network_info_t));
     ret->_error = se_None;
     ret->_state = ss_WaitingForNetInfo;
+    ret->scan = initial_scan;
     POSIX_EC(pthread_mutex_init(&ret->_mutex, NULL));
     POSIX_EC(pthread_cond_init(&ret->_release_to_connect, NULL));
     memset(&ret->_server_handle, 0, sizeof(httpd_handle_t));

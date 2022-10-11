@@ -5,8 +5,10 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
+#include "esp_wifi_types.h"
 #include "freertos/portmacro.h"
 #include "nvs_flash.h"
+#include "scan.h"
 #include "setup.h"
 #include "station.h"
 #include "util.h"
@@ -15,8 +17,18 @@
 static const char *TAG = "level_logger_main";
 
 void do_setup(void) {
+    // Do initial scan
+    bg_scan_t *initial_scan = ll_do_scan();
+
+    // Log the network list
+    ESP_LOGI(TAG, "SCANNED NETWORKS (SSID, RSSI)");
+    for (int i = 0; i < initial_scan->scanned_ap_count; i++) {
+        wifi_ap_record_t *netrec = &initial_scan->scanned_aps[i];
+        ESP_LOGI(TAG, "%s %d", netrec->ssid, netrec->rssi);
+    }
+
     // Start the server
-    setup_ap_server_t *setup_server = setup_ap_start_server();
+    setup_ap_server_t *setup_server = setup_ap_start_server(initial_scan);
 
     // Loop until setup succeeds
     while (true) {
@@ -59,6 +71,10 @@ void do_setup(void) {
     // Stop the setup access point and server
     setup_ap_stop_server(setup_server);
     setup_server = NULL;
+
+    // Deallocate scan results
+    ll_destroy_scan(initial_scan);
+    initial_scan = NULL;
 }
 
 void app_main(void) {
