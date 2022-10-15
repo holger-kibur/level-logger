@@ -2,14 +2,18 @@
 #define UTIL_H
 
 #include "esp_log.h"
+
 #include <errno.h>
 
 // POSIX error check
 #define POSIX_EC(X)                                                            \
     {                                                                          \
         if ((X) < 0) {                                                         \
-            ESP_LOGE(TAG, "POSIX error check failed!\nCode:%d\nMessage: %s",   \
-                     errno, strerror(errno));                                  \
+            ESP_LOGE(                                                          \
+                TAG,                                                           \
+                "POSIX error check failed!\nCode:%d\nMessage: %s",             \
+                errno,                                                         \
+                strerror(errno));                                              \
             abort();                                                           \
         }                                                                      \
     }

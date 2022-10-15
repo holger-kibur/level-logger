@@ -1,4 +1,5 @@
 #include "setup.h"
+
 #include "const.h"
 #include "esp_err.h"
 #include "esp_event.h"
@@ -11,6 +12,7 @@
 #include "render.h"
 #include "scan.h"
 #include "util.h"
+
 #include <errno.h>
 #include <pthread.h>
 #include <string.h>
@@ -137,34 +139,51 @@ static esp_err_t main_get_handler(httpd_req_t *request) {
     // Decide which page to present to the user
     switch (get_setup_server_state(glob_server)) {
     case ss_WaitingForNetInfo:
-        ESP_LOGI(TAG, "Waiting for network information. Responding with "
-                      "network information form page.");
-        ESP_EC(httpd_resp_send(request, render_form_page(glob_server->scan),
-                               HTTPD_RESP_USE_STRLEN));
+        ESP_LOGI(
+            TAG,
+            "Waiting for network information. Responding with "
+            "network information form page.");
+        ESP_EC(httpd_resp_send(
+            request,
+            render_form_page(glob_server->scan),
+            HTTPD_RESP_USE_STRLEN));
         break;
     case ss_WaitingForConnection:
         ESP_LOGI(
             TAG,
             "Currently trying to connect. Responding with redirect to status.");
-        ESP_EC(httpd_resp_send(request, SETUP_LOADING_HTML,
-                               HTTPD_RESP_USE_STRLEN));
+        ESP_EC(httpd_resp_send(
+            request,
+            SETUP_LOADING_HTML,
+            HTTPD_RESP_USE_STRLEN));
         break;
     case ss_Failure:;
         char error_reason_buffer[256];
 
-        ESP_LOGI(TAG, "Failed to connect and/or confirm target. Resonding with "
-                      "fail message!");
-        setup_server_error_format(glob_server, 256, error_reason_buffer,
-                                  SETUP_ERROR_HTML_FORMAT);
-        ESP_EC(httpd_resp_send(request, error_reason_buffer,
-                               HTTPD_RESP_USE_STRLEN));
+        ESP_LOGI(
+            TAG,
+            "Failed to connect and/or confirm target. Resonding with "
+            "fail message!");
+        setup_server_error_format(
+            glob_server,
+            256,
+            error_reason_buffer,
+            SETUP_ERROR_HTML_FORMAT);
+        ESP_EC(httpd_resp_send(
+            request,
+            error_reason_buffer,
+            HTTPD_RESP_USE_STRLEN));
         reset_setup_server_state(glob_server);
         break;
     case ss_Success:
-        ESP_LOGI(TAG, "Succeeded in connecting with network and confirming "
-                      "target. Responding with success mesage!");
-        ESP_EC(httpd_resp_send(request, SETUP_SUCCESS_HTML,
-                               HTTPD_RESP_USE_STRLEN));
+        ESP_LOGI(
+            TAG,
+            "Succeeded in connecting with network and confirming "
+            "target. Responding with success mesage!");
+        ESP_EC(httpd_resp_send(
+            request,
+            SETUP_SUCCESS_HTML,
+            HTTPD_RESP_USE_STRLEN));
         break;
     }
 
@@ -180,8 +199,10 @@ static esp_err_t main_post_handler(httpd_req_t *request) {
     int copy_len = request->content_len;
     int max_len = sizeof(glob_server->info.buffer);
     if (copy_len > max_len) {
-        ESP_LOGW(TAG, "POST content is bigger than can fit in the buffer. "
-                      "Check form HTML.");
+        ESP_LOGW(
+            TAG,
+            "POST content is bigger than can fit in the buffer. "
+            "Check form HTML.");
         // Truncate content to fit in buffer.
         copy_len = max_len;
     }
@@ -215,6 +236,9 @@ setup_ap_server_t *setup_ap_start_server(bg_scan_t *initial_scan) {
         .user_ctx = NULL,
     };
 
+    // Create the page table
+    init_page_table();
+
     // Create the setup server object
     setup_ap_server_t *server = create_setup_server(initial_scan);
 
@@ -233,10 +257,12 @@ setup_ap_server_t *setup_ap_start_server(bg_scan_t *initial_scan) {
 void setup_ap_stop_server(setup_ap_server_t *server) {
     NPC(server);
     if (server != glob_server) {
-        ESP_LOGE(TAG,
-                 "Called setup_ap_stop_server with unexpected server "
-                 "reference!\nExpected: %p, recieved: %p",
-                 glob_server, server);
+        ESP_LOGE(
+            TAG,
+            "Called setup_ap_stop_server with unexpected server "
+            "reference!\nExpected: %p, recieved: %p",
+            glob_server,
+            server);
         abort();
     }
     glob_server = NULL;
@@ -279,8 +305,8 @@ void reset_setup_server_state(setup_ap_server_t *server) {
     POSIX_EC(pthread_mutex_unlock(&server->_mutex));
 }
 
-void setup_server_error_format(setup_ap_server_t *server, int buflen,
-                               char *buffer, const char *format) {
+void setup_server_error_format(
+    setup_ap_server_t *server, int buflen, char *buffer, const char *format) {
     NPC(server);
     NPC(buffer);
     NPC(format);
@@ -288,8 +314,9 @@ void setup_server_error_format(setup_ap_server_t *server, int buflen,
     int len_needed =
         snprintf(buffer, buflen, format, netinfo_error_explain(server->_error));
     if (len_needed >= buflen) {
-        ESP_LOGW(TAG,
-                 "Setup server error message can't fit in provided buffer!");
+        ESP_LOGW(
+            TAG,
+            "Setup server error message can't fit in provided buffer!");
     }
     POSIX_EC(pthread_mutex_unlock(&server->_mutex));
 }
@@ -300,19 +327,26 @@ void fill_netinfo(setup_ap_server_t *server) {
     POSIX_EC(pthread_mutex_lock(&server->_mutex));
     server->_error = parse_netinfo_from_post(&server->info);
     if (server->_error == se_None) {
-        ESP_LOGI(TAG,
-                 "Parsed network info:\nSSID: %s\nPSK: %s\nTarget: %s\nDevice "
-                 "Name: %s",
-                 server->info.ssid, server->info.password, server->info.target,
-                 server->info.devname);
+        ESP_LOGI(
+            TAG,
+            "Parsed network info:\nSSID: %s\nPSK: %s\nTarget: %s\nDevice "
+            "Name: %s",
+            server->info.ssid,
+            server->info.password,
+            server->info.target,
+            server->info.devname);
         server->_error = netinfo_validate(&server->info);
     } else {
-        ESP_LOGI(TAG, "Error parsing network info: %s!",
-                 netinfo_error_explain(server->_error));
+        ESP_LOGI(
+            TAG,
+            "Error parsing network info: %s!",
+            netinfo_error_explain(server->_error));
     }
     if (server->_error != se_None) {
-        ESP_LOGI(TAG, "Network info invalid: %s!",
-                 netinfo_error_explain(server->_error));
+        ESP_LOGI(
+            TAG,
+            "Network info invalid: %s!",
+            netinfo_error_explain(server->_error));
         server->_state = ss_Failure;
     } else {
         ESP_LOGD(TAG, "validated network info");

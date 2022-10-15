@@ -12,6 +12,7 @@
 #include "setup.h"
 #include "station.h"
 #include "util.h"
+
 #include <stdio.h>
 
 static const char *TAG = "level_logger_main";
@@ -39,7 +40,8 @@ void do_setup(void) {
 
         // Attempt to connect to the network with given ssid and password
         connect_result_t connect_res = try_connect_to_network(
-            setup_server->info.ssid, setup_server->info.password);
+            setup_server->info.ssid,
+            setup_server->info.password);
         setup_error_t setup_err = se_None;
         switch (connect_res) {
         case cr_InvalidSsid:

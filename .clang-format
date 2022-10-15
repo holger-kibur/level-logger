@@ -1,4 +1,13 @@
 ---
-BasedOnStyle: LLVM
-IndentWidth: 4
+AlignAfterOpenBracket: AlwaysBreak
+AlignOperands: 'true'
+AllowAllArgumentsOnNextLine: 'false'
+BinPackArguments: 'false'
+BinPackParameters: 'false'
+ColumnLimit: '80'
+IncludeBlocks: Regroup
+IndentWidth: '4'
+SortIncludes: 'true'
+SpacesBeforeTrailingComments: '1'
+TabWidth: '4'
 ---

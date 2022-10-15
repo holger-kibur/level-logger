@@ -1,9 +1,11 @@
 #include "scan.h"
+
 #include "const.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
 #include "util.h"
+
 #include <string.h>
 
 static const wifi_scan_config_t SCAN_CONFIG = {
@@ -27,14 +29,15 @@ static const wifi_country_t SCAN_COUNTRY = {
 
 static const char *TAG = "ll_scan";
 
-static void handle_scan_complete(void *handler_data, esp_event_base_t base,
-                                 int32_t id, void *event_data) {
+static void handle_scan_complete(
+    void *handler_data, esp_event_base_t base, int32_t id, void *event_data) {
     NPC(handler_data);
 
     bg_scan_t *bg_scan = (bg_scan_t *)handler_data;
     bg_scan->scanned_ap_count = AP_SCAN_MAX_APS;
-    ESP_EC(esp_wifi_scan_get_ap_records(&bg_scan->scanned_ap_count,
-                                        bg_scan->scanned_aps));
+    ESP_EC(esp_wifi_scan_get_ap_records(
+        &bg_scan->scanned_ap_count,
+        bg_scan->scanned_aps));
 }
 
 static void filter_scan_results(bg_scan_t *bg_scan) {
@@ -80,8 +83,11 @@ bg_scan_t *ll_do_scan() {
     memset(&bg_scan->scanned_aps, 0, sizeof(bg_scan->scanned_aps));
 
     // Register handler
-    ESP_EC(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_SCAN_DONE,
-                                      handle_scan_complete, bg_scan));
+    ESP_EC(esp_event_handler_register(
+        WIFI_EVENT,
+        WIFI_EVENT_SCAN_DONE,
+        handle_scan_complete,
+        bg_scan));
 
     // Perform the scan
     ESP_EC(esp_wifi_set_country(&SCAN_COUNTRY));
@@ -89,8 +95,10 @@ bg_scan_t *ll_do_scan() {
     ESP_EC(esp_wifi_scan_stop());
 
     // Unregister handler
-    ESP_EC(esp_event_handler_unregister(WIFI_EVENT, WIFI_EVENT_SCAN_DONE,
-                                        handle_scan_complete));
+    ESP_EC(esp_event_handler_unregister(
+        WIFI_EVENT,
+        WIFI_EVENT_SCAN_DONE,
+        handle_scan_complete));
 
     // Filter the access point list
     filter_scan_results(bg_scan);

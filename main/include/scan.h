@@ -3,6 +3,7 @@
 
 #include "const.h"
 #include "esp_wifi_types.h"
+
 #include <stdbool.h>
 
 typedef struct bg_scan_t {

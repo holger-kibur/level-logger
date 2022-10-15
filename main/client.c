@@ -1,4 +1,5 @@
 #include "client.h"
+
 #include "esp_flash.h"
 #include "esp_netif_types.h"
 #include "esp_wifi.h"
@@ -63,16 +64,19 @@ connect_result_t try_connect_to_network(char *ssid, char *pass) {
         ll_station_wait_for_change(conn_attempt);
         switch (ll_station_get_state(conn_attempt)) {
         case cas_Initial:
-            ESP_LOGE(TAG,
-                     "Connection attempt FSM transitioned into initial state!");
+            ESP_LOGE(
+                TAG,
+                "Connection attempt FSM transitioned into initial state!");
             abort();
         case cas_StartedConnection:
             ESP_LOGI(TAG, "Started connecting to network...");
             break;
         case cas_Failed:;
             uint8_t reason = ll_station_get_fail_reason(conn_attempt);
-            ESP_LOGW(TAG, "Connection to access point failed!\nCode: %s",
-                     esp_wifi_reflect_reason(reason));
+            ESP_LOGW(
+                TAG,
+                "Connection to access point failed!\nCode: %s",
+                esp_wifi_reflect_reason(reason));
             goto stop_fsm;
         case cas_ConnectSuccess:
             ESP_LOGI(TAG, "Connected to the access point!");
